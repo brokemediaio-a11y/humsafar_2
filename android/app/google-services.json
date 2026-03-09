@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "819096727879",
+    "project_id": "humsafar-eb7f9",
+    "storage_bucket": "humsafar-eb7f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:819096727879:android:d09c0db5870fa3b4f9dc62",
+        "android_client_info": {
+          "package_name": "com.example.humsafar_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "819096727879-luc538f6n26cg9er0upojbk92v6562r7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.humsafar_app",
+            "certificate_hash": "8f10816888e1a434830501d4ac37c34090e7077d"
+          }
+        },
+        {
+          "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh4gGqp-Ex2jV5Io5NfkUAg-1UZC8NvYk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
