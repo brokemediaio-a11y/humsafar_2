@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -18,15 +19,13 @@ void main() async {
   };
 
   // Try to initialize Firebase
-  // For web, you'll need to run: flutterfire configure
-  // This will generate firebase_options.dart
   try {
     // Check if Firebase is already initialized
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
-        // For web, you need firebase_options.dart file
-        // Run: flutterfire configure to generate it
+        options: DefaultFirebaseOptions.currentPlatform,
       );
+      debugPrint('Firebase initialized successfully');
     }
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
