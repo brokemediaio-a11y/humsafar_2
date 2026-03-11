@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import 'firestore_service.dart';
+import 'cloudinary_service.dart';
 
 class AuthService {
   FirebaseAuth? get _auth {
@@ -38,6 +41,12 @@ class AuthService {
     required String email,
     required String password,
     required UserModel userData,
+    required File studentCardFrontFile,
+    required File studentCardBackFile,
+    File? cnicFrontFile,
+    File? cnicBackFile,
+    File? licenseFrontFile,
+    File? licenseBackFile,
   }) async {
     final auth = _auth;
     if (auth == null) {
@@ -52,9 +61,31 @@ class AuthService {
       );
 
       if (userCredential.user != null) {
+        final uid = userCredential.user!.uid;
+
         // Update user data with uid
+        userData = userData.copyWith(uid: uid);
+
+        // Upload images to Cloudinary and get URLs
+        final cloudinary = CloudinaryService();
+        final imageUrls = await cloudinary.uploadAllIdImages(
+          userId: uid,
+          studentCardFront: studentCardFrontFile,
+          studentCardBack: studentCardBackFile,
+          cnicFront: cnicFrontFile,
+          cnicBack: cnicBackFile,
+          licenseFront: licenseFrontFile,
+          licenseBack: licenseBackFile,
+        );
+
+        // Update user data to store URLs instead of raw image/base64
         userData = userData.copyWith(
-          uid: userCredential.user!.uid,
+          studentCardFront: imageUrls['student_card_front'],
+          studentCardBack: imageUrls['student_card_back'],
+          cnicFront: imageUrls['cnic_front'],
+          cnicBack: imageUrls['cnic_back'],
+          licenseFront: imageUrls['license_front'],
+          licenseBack: imageUrls['license_back'],
         );
 
         // Save user data to Firestore

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -32,12 +34,13 @@ class _SignupScreenState extends State<SignupScreen>
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   DateTime? _dateOfBirth;
-  String? _studentCardFrontBase64;
-  String? _studentCardBackBase64;
-  String? _cnicFrontBase64;
-  String? _cnicBackBase64;
-  String? _licenseFrontBase64;
-  String? _licenseBackBase64;
+  // Local files for documents (used for Cloudinary uploads)
+  File? _studentCardFrontFile;
+  File? _studentCardBackFile;
+  File? _cnicFrontFile;
+  File? _cnicBackFile;
+  File? _licenseFrontFile;
+  File? _licenseBackFile;
   bool _hasCar = false;
 
   late AnimationController _animationController;
@@ -94,35 +97,27 @@ class _SignupScreenState extends State<SignupScreen>
     final image = await ImageUtils.pickImage(source: source);
     if (image == null) return;
 
-    final base64 = await ImageUtils.imageToBase64(image);
-    if (base64 == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to process image')),
-        );
-      }
-      return;
-    }
+    final file = File(image.path);
 
     setState(() {
       switch (type) {
         case 'studentCardFront':
-          _studentCardFrontBase64 = base64;
+          _studentCardFrontFile = file;
           break;
         case 'studentCardBack':
-          _studentCardBackBase64 = base64;
+          _studentCardBackFile = file;
           break;
         case 'cnicFront':
-          _cnicFrontBase64 = base64;
+          _cnicFrontFile = file;
           break;
         case 'cnicBack':
-          _cnicBackBase64 = base64;
+          _cnicBackFile = file;
           break;
         case 'licenseFront':
-          _licenseFrontBase64 = base64;
+          _licenseFrontFile = file;
           break;
         case 'licenseBack':
-          _licenseBackBase64 = base64;
+          _licenseBackFile = file;
           break;
       }
     });
@@ -282,14 +277,14 @@ class _SignupScreenState extends State<SignupScreen>
       );
       return;
     }
-    if (_studentCardFrontBase64 == null || _studentCardBackBase64 == null) {
+    if (_studentCardFrontFile == null || _studentCardBackFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please upload student card (front and back)')),
       );
       return;
     }
 
-    if (_hasCar && (_licenseFrontBase64 == null || _licenseBackBase64 == null)) {
+    if (_hasCar && (_licenseFrontFile == null || _licenseBackFile == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please upload driving license (front and back)')),
       );
@@ -330,22 +325,29 @@ class _SignupScreenState extends State<SignupScreen>
       cnic: _cnicController.text.trim(),
       dateOfBirth: _dateOfBirth!,
       studentId: _studentIdController.text.trim(),
-      studentCardFront: _studentCardFrontBase64,
-      studentCardBack: _studentCardBackBase64,
-      cnicFront: _cnicFrontBase64,
-      cnicBack: _cnicBackBase64,
-      licenseFront: _licenseFrontBase64,
-      licenseBack: _licenseBackBase64,
+      // Image URLs will be set after Cloudinary upload in AuthService
+      studentCardFront: null,
+      studentCardBack: null,
+      cnicFront: null,
+      cnicBack: null,
+      licenseFront: null,
+      licenseBack: null,
       hasCar: _hasCar,
       createdAt: DateTime.now(),
     );
 
-    debugPrint('Signup: Creating user with hasCar: $_hasCar, licenseFront: ${_licenseFrontBase64 != null ? "present" : "null"}, licenseBack: ${_licenseBackBase64 != null ? "present" : "null"}');
+    debugPrint('Signup: Creating user with hasCar: $_hasCar, licenseFront: ${_licenseFrontFile != null ? "present" : "null"}, licenseBack: ${_licenseBackFile != null ? "present" : "null"}');
 
     final result = await _authService.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       userData: userData,
+      studentCardFrontFile: _studentCardFrontFile!,
+      studentCardBackFile: _studentCardBackFile!,
+      cnicFrontFile: _cnicFrontFile,
+      cnicBackFile: _cnicBackFile,
+      licenseFrontFile: _licenseFrontFile,
+      licenseBackFile: _licenseBackFile,
     );
 
     if (!mounted) return;
@@ -379,7 +381,7 @@ class _SignupScreenState extends State<SignupScreen>
     }
   }
 
-  Widget _buildDocumentUploadButton(String label, String type, String? base64) {
+  Widget _buildDocumentUploadButton(String label, String type, bool isSelected) {
     return InkWell(
       onTap: () => _pickImage(type),
       child: Container(
@@ -388,9 +390,9 @@ class _SignupScreenState extends State<SignupScreen>
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: base64 != null ? const Color(0xFF49977a) : Colors.grey.shade300,
-            width: base64 != null ? 2 : 1,
-            style: base64 != null ? BorderStyle.solid : BorderStyle.solid,
+            color: isSelected ? const Color(0xFF49977a) : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+            style: BorderStyle.solid,
           ),
         ),
         child: Row(
@@ -399,13 +401,13 @@ class _SignupScreenState extends State<SignupScreen>
             Text(
               label,
               style: TextStyle(
-                color: base64 != null ? const Color(0xFF49977a) : Colors.grey.shade700,
-                fontWeight: base64 != null ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? const Color(0xFF49977a) : Colors.grey.shade700,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
             Icon(
-              base64 != null ? Icons.check_circle : Icons.upload_file,
-              color: base64 != null ? const Color(0xFF49977a) : Colors.grey.shade600,
+              isSelected ? Icons.check_circle : Icons.upload_file,
+              color: isSelected ? const Color(0xFF49977a) : Colors.grey.shade600,
             ),
           ],
         ),
@@ -683,25 +685,25 @@ class _SignupScreenState extends State<SignupScreen>
                       _buildDocumentUploadButton(
                         'Student Card - Front',
                         'studentCardFront',
-                        _studentCardFrontBase64,
+                        _studentCardFrontFile != null,
                       ),
                       const SizedBox(height: 12),
                       _buildDocumentUploadButton(
                         'Student Card - Back',
                         'studentCardBack',
-                        _studentCardBackBase64,
+                        _studentCardBackFile != null,
                       ),
                       const SizedBox(height: 12),
                       _buildDocumentUploadButton(
                         'CNIC - Front (optional)',
                         'cnicFront',
-                        _cnicFrontBase64,
+                        _cnicFrontFile != null,
                       ),
                       const SizedBox(height: 12),
                       _buildDocumentUploadButton(
                         'CNIC - Back (optional)',
                         'cnicBack',
-                        _cnicBackBase64,
+                        _cnicBackFile != null,
                       ),
                       const SizedBox(height: 24),
                       // Car ownership checkbox
@@ -724,8 +726,8 @@ class _SignupScreenState extends State<SignupScreen>
                                       _hasCar = value ?? false;
                                       if (!_hasCar) {
                                         // Clear license data if unchecked
-                                        _licenseFrontBase64 = null;
-                                        _licenseBackBase64 = null;
+                                        _licenseFrontFile = null;
+                                        _licenseBackFile = null;
                                       }
                                     });
                                   },
@@ -756,13 +758,13 @@ class _SignupScreenState extends State<SignupScreen>
                               _buildDocumentUploadButton(
                                 'License - Front',
                                 'licenseFront',
-                                _licenseFrontBase64,
+                                _licenseFrontFile != null,
                               ),
                               const SizedBox(height: 12),
                               _buildDocumentUploadButton(
                                 'License - Back',
                                 'licenseBack',
-                                _licenseBackBase64,
+                                _licenseBackFile != null,
                               ),
                               const SizedBox(height: 8),
                               Container(
