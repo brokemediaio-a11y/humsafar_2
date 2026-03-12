@@ -55,5 +55,14 @@
 	<string>HumSafar needs your location to provide real-time ride sharing features.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>HumSafar needs your location to show nearby rides and help you find travel companions.</string>
+	<!-- Camera & Photo Library Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>HumSafar needs camera access to capture your ID documents for verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HumSafar needs photo library access to upload your ID documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>HumSafar needs permission to save photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>HumSafar needs microphone access for video features.</string>
 </dict>
 </plist>

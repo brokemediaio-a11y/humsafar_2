@@ -20,7 +20,8 @@ class ImageUtils {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 60, // Initial compression from camera/gallery
+        // Removed imageQuality to prevent iOS main-thread re-compression hang
+        // Compression is handled in imageToBase64() below
       );
       return image;
     } catch (e) {

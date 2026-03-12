@@ -94,10 +94,19 @@ class _SignupScreenState extends State<SignupScreen>
 
     if (source == null) return;
 
+    // Critical fix for iOS: wait for dialog to fully dismiss before triggering
+    // the camera/gallery picker. Without this, iOS hangs trying to open the
+    // picker from a context that's still being popped.
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return; // Safety check after async gap
+
     final image = await ImageUtils.pickImage(source: source);
     if (image == null) return;
 
     final file = File(image.path);
+
+    if (!mounted) return; // Check again before setState
 
     setState(() {
       switch (type) {
@@ -132,9 +141,7 @@ class _SignupScreenState extends State<SignupScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF49977a),
-            ),
+            colorScheme: const ColorScheme.light(primary: Color(0xFF49977a)),
           ),
           child: child!,
         );
@@ -164,14 +171,21 @@ class _SignupScreenState extends State<SignupScreen>
       return false;
     }
     if (!value.contains('@') || !value.contains('.')) {
-      _showValidationError('Make sure the email is valid and contains @ and . (e.g., user@example.com)');
+      _showValidationError(
+        'Make sure the email is valid and contains @ and . (e.g., user@example.com)',
+      );
       return false;
     }
     // Additional check: @ should come before .
     final atIndex = value.indexOf('@');
     final dotIndex = value.lastIndexOf('.');
-    if (atIndex == -1 || dotIndex == -1 || atIndex >= dotIndex || dotIndex == value.length - 1) {
-      _showValidationError('Make sure the email is valid and contains @ and . (e.g., user@example.com)');
+    if (atIndex == -1 ||
+        dotIndex == -1 ||
+        atIndex >= dotIndex ||
+        dotIndex == value.length - 1) {
+      _showValidationError(
+        'Make sure the email is valid and contains @ and . (e.g., user@example.com)',
+      );
       return false;
     }
     return true;
@@ -190,9 +204,11 @@ class _SignupScreenState extends State<SignupScreen>
     } else {
       phoneNumber = value; // User typed digits only
     }
-    
+
     if (phoneNumber.length != 10) {
-      _showValidationError('Make sure the phone number has exactly 10 digits after +92 (e.g., +923001234567)');
+      _showValidationError(
+        'Make sure the phone number has exactly 10 digits after +92 (e.g., +923001234567)',
+      );
       return false;
     }
     if (!RegExp(r'^\d+$').hasMatch(phoneNumber)) {
@@ -209,18 +225,24 @@ class _SignupScreenState extends State<SignupScreen>
     }
     // Check format: XXXXX-XXXXXXX-X (15 characters total)
     if (value.length != 15) {
-      _showValidationError('Make sure the CNIC is in the format XXXXX-XXXXXXX-X (15 characters total)');
+      _showValidationError(
+        'Make sure the CNIC is in the format XXXXX-XXXXXXX-X (15 characters total)',
+      );
       return false;
     }
     // Check dashes are in correct positions
     if (value[5] != '-' || value[13] != '-') {
-      _showValidationError('Make sure the CNIC is in the format XXXXX-XXXXXXX-X (dashes after 5 digits and before last digit)');
+      _showValidationError(
+        'Make sure the CNIC is in the format XXXXX-XXXXXXX-X (dashes after 5 digits and before last digit)',
+      );
       return false;
     }
     // Check all other characters are digits
     final digitsOnly = value.replaceAll('-', '');
     if (!RegExp(r'^\d+$').hasMatch(digitsOnly) || digitsOnly.length != 13) {
-      _showValidationError('CNIC can only contain digits (no alphabets). Format: XXXXX-XXXXXXX-X');
+      _showValidationError(
+        'CNIC can only contain digits (no alphabets). Format: XXXXX-XXXXXXX-X',
+      );
       return false;
     }
     return true;
@@ -235,9 +257,11 @@ class _SignupScreenState extends State<SignupScreen>
     final age = today.year - _dateOfBirth!.year;
     final monthDiff = today.month - _dateOfBirth!.month;
     final dayDiff = today.day - _dateOfBirth!.day;
-    
-    final actualAge = (monthDiff < 0 || (monthDiff == 0 && dayDiff < 0)) ? age - 1 : age;
-    
+
+    final actualAge = (monthDiff < 0 || (monthDiff == 0 && dayDiff < 0))
+        ? age - 1
+        : age;
+
     if (actualAge < 18) {
       _showValidationError('You must be at least 18 years old to register');
       return false;
@@ -251,16 +275,19 @@ class _SignupScreenState extends State<SignupScreen>
       return false;
     }
     if (value.length != 6) {
-      _showValidationError('Make sure the Student ID is exactly 6 digits (e.g., 123456)');
+      _showValidationError(
+        'Make sure the Student ID is exactly 6 digits (e.g., 123456)',
+      );
       return false;
     }
     if (!RegExp(r'^\d+$').hasMatch(value)) {
-      _showValidationError('Student ID can only contain numbers (no alphabets). Format: 123456');
+      _showValidationError(
+        'Student ID can only contain numbers (no alphabets). Format: 123456',
+      );
       return false;
     }
     return true;
   }
-
 
   Future<void> _handleSignup() async {
     // Validate all fields with custom validators
@@ -269,7 +296,7 @@ class _SignupScreenState extends State<SignupScreen>
     if (!_validateCNIC(_cnicController.text.trim())) return;
     if (!_validateDateOfBirth()) return;
     if (!_validateStudentId(_studentIdController.text.trim())) return;
-    
+
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -279,14 +306,18 @@ class _SignupScreenState extends State<SignupScreen>
     }
     if (_studentCardFrontFile == null || _studentCardBackFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please upload student card (front and back)')),
+        const SnackBar(
+          content: Text('Please upload student card (front and back)'),
+        ),
       );
       return;
     }
 
     if (_hasCar && (_licenseFrontFile == null || _licenseBackFile == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please upload driving license (front and back)')),
+        const SnackBar(
+          content: Text('Please upload driving license (front and back)'),
+        ),
       );
       return;
     }
@@ -308,9 +339,9 @@ class _SignupScreenState extends State<SignupScreen>
     );
     if (!mounted) return;
     if (cnicExists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CNIC already exists')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('CNIC already exists')));
       return;
     }
 
@@ -321,7 +352,8 @@ class _SignupScreenState extends State<SignupScreen>
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
       email: _emailController.text.trim(),
-      phone: '+92${_phoneController.text.trim()}', // Add +92 prefix to stored value
+      phone:
+          '+92${_phoneController.text.trim()}', // Add +92 prefix to stored value
       cnic: _cnicController.text.trim(),
       dateOfBirth: _dateOfBirth!,
       studentId: _studentIdController.text.trim(),
@@ -336,7 +368,9 @@ class _SignupScreenState extends State<SignupScreen>
       createdAt: DateTime.now(),
     );
 
-    debugPrint('Signup: Creating user with hasCar: $_hasCar, licenseFront: ${_licenseFrontFile != null ? "present" : "null"}, licenseBack: ${_licenseBackFile != null ? "present" : "null"}');
+    debugPrint(
+      'Signup: Creating user with hasCar: $_hasCar, licenseFront: ${_licenseFrontFile != null ? "present" : "null"}, licenseBack: ${_licenseBackFile != null ? "present" : "null"}',
+    );
 
     final result = await _authService.signUp(
       email: _emailController.text.trim(),
@@ -359,7 +393,9 @@ class _SignupScreenState extends State<SignupScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created successfully! Please wait for admin verification before logging in.'),
+            content: Text(
+              'Account created successfully! Please wait for admin verification before logging in.',
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             duration: Duration(seconds: 4),
@@ -381,7 +417,11 @@ class _SignupScreenState extends State<SignupScreen>
     }
   }
 
-  Widget _buildDocumentUploadButton(String label, String type, bool isSelected) {
+  Widget _buildDocumentUploadButton(
+    String label,
+    String type,
+    bool isSelected,
+  ) {
     return InkWell(
       onTap: () => _pickImage(type),
       child: Container(
@@ -401,13 +441,17 @@ class _SignupScreenState extends State<SignupScreen>
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFF49977a) : Colors.grey.shade700,
+                color: isSelected
+                    ? const Color(0xFF49977a)
+                    : Colors.grey.shade700,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
             Icon(
               isSelected ? Icons.check_circle : Icons.upload_file,
-              color: isSelected ? const Color(0xFF49977a) : Colors.grey.shade600,
+              color: isSelected
+                  ? const Color(0xFF49977a)
+                  : Colors.grey.shade600,
             ),
           ],
         ),
@@ -492,7 +536,8 @@ class _SignupScreenState extends State<SignupScreen>
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
-                    if (!_validateEmail(value)) return null; // Error shown in validation method
+                    if (!_validateEmail(value))
+                      return null; // Error shown in validation method
                     return null;
                   },
                 ),
@@ -503,7 +548,9 @@ class _SignupScreenState extends State<SignupScreen>
                   keyboardType: TextInputType.phone,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10), // Only 10 digits (prefixText shows +92)
+                    LengthLimitingTextInputFormatter(
+                      10,
+                    ), // Only 10 digits (prefixText shows +92)
                   ],
                   decoration: InputDecoration(
                     labelText: 'Phone Number',
@@ -519,7 +566,8 @@ class _SignupScreenState extends State<SignupScreen>
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
                     // Value is just digits, prefixText shows +92
-                    if (!_validatePhone(value)) return null; // Error shown in validation method
+                    if (!_validatePhone(value))
+                      return null; // Error shown in validation method
                     return null;
                   },
                 ),
@@ -571,16 +619,21 @@ class _SignupScreenState extends State<SignupScreen>
                           text: '${text.substring(0, 5)}-${text.substring(5)}',
                           selection: TextSelection.collapsed(offset: 7),
                         );
-                      } else if (text.length > 6 && text.length <= 13 && text[5] != '-') {
+                      } else if (text.length > 6 &&
+                          text.length <= 13 &&
+                          text[5] != '-') {
                         // Ensure first dash is present
                         return TextEditingValue(
                           text: '${text.substring(0, 5)}-${text.substring(5)}',
-                          selection: TextSelection.collapsed(offset: text.length + 1),
+                          selection: TextSelection.collapsed(
+                            offset: text.length + 1,
+                          ),
                         );
                       } else if (text.length == 14 && text[13] != '-') {
                         // Add second dash before last digit
                         return TextEditingValue(
-                          text: '${text.substring(0, 13)}-${text.substring(13)}',
+                          text:
+                              '${text.substring(0, 13)}-${text.substring(13)}',
                           selection: TextSelection.collapsed(offset: 15),
                         );
                       }
@@ -599,7 +652,8 @@ class _SignupScreenState extends State<SignupScreen>
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
-                    if (!_validateCNIC(value)) return null; // Error shown in validation method
+                    if (!_validateCNIC(value))
+                      return null; // Error shown in validation method
                     return null;
                   },
                 ),
@@ -622,7 +676,9 @@ class _SignupScreenState extends State<SignupScreen>
                           child: Text(
                             _dateOfBirth == null
                                 ? 'Date of Birth (DD / MM / YYYY)'
-                                : DateFormat('dd / MM / yyyy').format(_dateOfBirth!),
+                                : DateFormat(
+                                    'dd / MM / yyyy',
+                                  ).format(_dateOfBirth!),
                             style: TextStyle(
                               color: _dateOfBirth == null
                                   ? Colors.grey.shade600
@@ -655,7 +711,8 @@ class _SignupScreenState extends State<SignupScreen>
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
-                    if (!_validateStudentId(value)) return null; // Error shown in validation method
+                    if (!_validateStudentId(value))
+                      return null; // Error shown in validation method
                     return null;
                   },
                 ),
@@ -772,7 +829,9 @@ class _SignupScreenState extends State<SignupScreen>
                                 decoration: BoxDecoration(
                                   color: Colors.orange.shade50,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.orange.shade200),
+                                  border: Border.all(
+                                    color: Colors.orange.shade200,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
@@ -895,4 +954,3 @@ class _SignupScreenState extends State<SignupScreen>
     );
   }
 }
-
