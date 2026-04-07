@@ -6,6 +6,7 @@ import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../services/user_search_service.dart';
 import '../services/firestore_service.dart';
+import '../services/block_service.dart';
 import 'chat_detail_screen.dart';
 
 class ChatsScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
   final AuthService _authService = AuthService();
   final UserSearchService _userSearchService = UserSearchService();
   final FirestoreService _firestoreService = FirestoreService();
+  final BlockService _blockService = BlockService();
   final TextEditingController _searchController = TextEditingController();
   
   bool _isSearching = false;
@@ -52,26 +54,62 @@ class _ChatsScreenState extends State<ChatsScreen> {
     super.dispose();
   }
 
-  void _openChat(ChatModel chat) {
+  void _openChat(ChatModel chat) async {
     final currentUser = _authService.currentUser;
     if (currentUser == null) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatDetailScreen(
-          chatId: chat.id,
-          otherUserId: chat.getOtherUserId(currentUser.uid),
-          otherUserName: chat.getOtherUserName(currentUser.uid),
-          otherUserImage: chat.getOtherUserImage(currentUser.uid),
-        ),
-      ),
+    final otherUserId = chat.getOtherUserId(currentUser.uid);
+    
+    // Check if users are blocked before opening chat
+    final areBlocked = await _blockService.areUsersBlocked(
+      userId1: currentUser.uid,
+      userId2: otherUserId,
     );
+
+    if (areBlocked && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot open chat with blocked user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatDetailScreen(
+            chatId: chat.id,
+            otherUserId: otherUserId,
+            otherUserName: chat.getOtherUserName(currentUser.uid),
+            otherUserImage: chat.getOtherUserImage(currentUser.uid),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _startChatWithUser(UserModel user) async {
     final currentUser = _authService.currentUser;
     if (currentUser == null) return;
+
+    // Check if users are blocked
+    final areBlocked = await _blockService.areUsersBlocked(
+      userId1: currentUser.uid,
+      userId2: user.uid,
+    );
+
+    if (areBlocked && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot start chat with blocked user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     // Get current user data
     final currentUserData = await _firestoreService.getUser(currentUser.uid);

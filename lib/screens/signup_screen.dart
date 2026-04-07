@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
@@ -9,6 +10,7 @@ import '../models/user_model.dart';
 import '../utils/image_utils.dart';
 import 'package:image_picker/image_picker.dart';
 import 'login_screen.dart';
+import '../widgets/policy_dialog.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -42,6 +44,8 @@ class _SignupScreenState extends State<SignupScreen>
   File? _licenseFrontFile;
   File? _licenseBackFile;
   bool _hasCar = false;
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -56,6 +60,10 @@ class _SignupScreenState extends State<SignupScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () => showPolicyDialog(context);
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => showPolicyDialog(context);
     _animationController.forward();
   }
 
@@ -68,6 +76,8 @@ class _SignupScreenState extends State<SignupScreen>
     _passwordController.dispose();
     _cnicController.dispose();
     _studentIdController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -814,21 +824,23 @@ class _SignupScreenState extends State<SignupScreen>
                     ),
                     Expanded(
                       child: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(color: Colors.black87),
+                        text: TextSpan(
+                          style: const TextStyle(color: Colors.black87),
                           children: [
-                            TextSpan(text: 'I agree to the '),
+                            const TextSpan(text: 'I agree to the '),
                             TextSpan(
                               text: 'Terms and Conditions',
-                              style: TextStyle(
+                              recognizer: _termsRecognizer,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF49977a),
                               ),
                             ),
-                            TextSpan(text: ' and '),
+                            const TextSpan(text: ' and '),
                             TextSpan(
                               text: 'Privacy Policy.',
-                              style: TextStyle(
+                              recognizer: _privacyRecognizer,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF49977a),
                               ),

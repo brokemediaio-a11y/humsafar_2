@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'help_support.dart';
 
 class AppHeader extends StatelessWidget {
   final String? searchQuery;
@@ -57,6 +58,12 @@ class AppHeader extends StatelessWidget {
                   },
                 ),
                 const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.help_outline),
+                  onPressed: () => showHelpDialog(context),
+                  color: Colors.grey.shade700,
+                  tooltip: 'Help',
+                ),
                 // Menu and Profile buttons
                 IconButton(
                   icon: const Icon(Icons.more_vert),

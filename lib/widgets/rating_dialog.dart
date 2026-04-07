@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/rating_model.dart';
+import '../models/report_model.dart';
 import '../services/rating_service.dart';
+import '../services/report_service.dart';
+import 'report_dialog.dart';
 
 class RatingDialog extends StatefulWidget {
   final String journeyId;
@@ -28,15 +31,35 @@ class RatingDialog extends StatefulWidget {
 
 class _RatingDialogState extends State<RatingDialog> {
   final RatingService _ratingService = RatingService();
+  final ReportService _reportService = ReportService();
   final TextEditingController _reviewController = TextEditingController();
   
   double _rating = 0;
   bool _isSubmitting = false;
+  bool _hasReported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfUserHasReported();
+  }
 
   @override
   void dispose() {
     _reviewController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkIfUserHasReported() async {
+    final hasReported = await _reportService.hasUserReported(
+      journeyId: widget.journeyId,
+      reporterId: widget.currentUserId,
+      reportedUserId: widget.userToRateId,
+    );
+    
+    if (mounted) {
+      setState(() => _hasReported = hasReported);
+    }
   }
 
   Future<void> _submitRating() async {
@@ -78,6 +101,25 @@ class _RatingDialogState extends State<RatingDialog> {
         const SnackBar(content: Text('Failed to submit rating. Please try again.')),
       );
     }
+  }
+
+  Future<void> _showReportDialog() async {
+    final reportType = widget.ratingType == RatingType.driver_to_passenger
+        ? ReportType.driver_reporting_passenger
+        : ReportType.passenger_reporting_driver;
+
+    await showReportDialog(
+      context: context,
+      journeyId: widget.journeyId,
+      reportedUserId: widget.userToRateId,
+      reportedUserName: widget.userToRateName,
+      reporterId: widget.currentUserId,
+      reporterName: widget.currentUserName,
+      reportType: reportType,
+      onReportSubmitted: () {
+        setState(() => _hasReported = true);
+      },
+    );
   }
 
   @override
@@ -162,6 +204,19 @@ class _RatingDialogState extends State<RatingDialog> {
         ),
       ),
       actions: [
+        // Report button
+        TextButton.icon(
+          onPressed: _isSubmitting || _hasReported ? null : _showReportDialog,
+          icon: Icon(
+            _hasReported ? Icons.check : Icons.report_problem,
+            size: 16,
+          ),
+          label: Text(_hasReported ? 'Reported' : 'Report User'),
+          style: TextButton.styleFrom(
+            foregroundColor: _hasReported ? Colors.grey : Colors.red.shade600,
+          ),
+        ),
+        const Spacer(),
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Skip'),

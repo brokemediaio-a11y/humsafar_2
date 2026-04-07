@@ -8,6 +8,7 @@ import '../services/journey_service.dart';
 import '../services/user_service.dart';
 import '../services/rating_service.dart';
 import 'login_screen.dart';
+import 'blocked_users_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TabController _tabController;
   UserModel? _userProfile;
   bool _isLoading = true;
+  bool _isDeletingAccount = false;
   List<JourneyModel> _cachedJourneys = [];
   bool _hasLoadedOnce = false;
 
@@ -101,6 +103,60 @@ class _ProfileScreenState extends State<ProfileScreen>
           (route) => false,
         );
       }
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'This will permanently delete your account and related data from the database. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (mounted) {
+      setState(() => _isDeletingAccount = true);
+    }
+
+    final result = await _authService.deleteAccount();
+
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+
+    if (result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.error ?? 'Failed to delete account'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -619,6 +675,53 @@ class _ProfileScreenState extends State<ProfileScreen>
               : 'Not provided'
           ),
           _buildInfoRow(Icons.badge, 'CNIC', _userProfile?.cnic ?? 'Not provided'),
+          const SizedBox(height: 8),
+          const Divider(),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.block, color: Color(0xFF49977a)),
+            title: const Text(
+              'Blocked Users',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: const Text('Manage users you have blocked'),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BlockedUsersScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: _isDeletingAccount
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text(
+              'Delete Account',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: const Text(
+              'Permanently delete your account and data',
+              style: TextStyle(color: Colors.red),
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Colors.red),
+            onTap: _isDeletingAccount ? null : _handleDeleteAccount,
+          ),
         ],
       ),
     );

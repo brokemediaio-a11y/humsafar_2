@@ -37,6 +37,49 @@
             {
               "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "819096727879-84q8oponksl8g28bi81bt4p64bpu4s0h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.humsafarApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:819096727879:android:f8f89d847fc804b0f9dc62",
+        "android_client_info": {
+          "package_name": "com.nexordis.humsafar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh4gGqp-Ex2jV5Io5NfkUAg-1UZC8NvYk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "819096727879-84q8oponksl8g28bi81bt4p64bpu4s0h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.humsafarApp"
+              }
             }
           ]
         }

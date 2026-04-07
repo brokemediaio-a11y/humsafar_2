@@ -1,4 +1,4 @@
-package com.example.humsafar_app
+package com.nexordis.humsafar
 
 import android.content.Intent
 import android.net.Uri

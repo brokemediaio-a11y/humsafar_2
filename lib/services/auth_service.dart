@@ -168,6 +168,44 @@ class AuthService {
     }
   }
 
+  /// Delete current user account from auth and database.
+  Future<AuthActionResult> deleteAccount() async {
+    final auth = _auth;
+    if (auth == null) {
+      return const AuthActionResult.error(
+        'Firebase is not initialized. Please configure Firebase first.',
+      );
+    }
+
+    final user = auth.currentUser;
+    if (user == null) {
+      return const AuthActionResult.error('No logged-in user found.');
+    }
+
+    try {
+      final dataDeleted = await _firestoreService.deleteUserAccountData(user.uid);
+      if (!dataDeleted) {
+        return const AuthActionResult.error(
+          'Could not remove account data from database.',
+        );
+      }
+
+      await user.delete();
+      return const AuthActionResult.success();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return const AuthActionResult.error(
+          'For security, please log in again and then delete your account.',
+        );
+      }
+      return AuthActionResult.error(_getErrorMessage(e.code));
+    } catch (e) {
+      return const AuthActionResult.error(
+        'Failed to delete account. Please try again.',
+      );
+    }
+  }
+
   String _getErrorMessage(String code) {
     switch (code) {
       case 'weak-password':
@@ -197,5 +235,15 @@ class AuthResult {
   const AuthResult.error(this.error) : user = null;
 
   bool get isSuccess => user != null;
+}
+
+class AuthActionResult {
+  final bool success;
+  final String? error;
+
+  const AuthActionResult.success()
+    : success = true,
+      error = null;
+  const AuthActionResult.error(this.error) : success = false;
 }
 

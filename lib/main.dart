@@ -44,14 +44,14 @@ class HumSafarApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'HumSafar - Carpool with fellow students',
-      debugShowCheckedModeBanner: false,
-      theme: _buildLightTheme(),
-      darkTheme: _buildDarkTheme(),
-      themeMode: ThemeMode.light, // Using light theme for now
-      home: const SplashScreen(),
-    );
+      return MaterialApp(
+        title: 'HumSafar - Carpool with fellow students',
+        debugShowCheckedModeBanner: false,
+        theme: _buildLightTheme(),
+        darkTheme: _buildDarkTheme(),
+        themeMode: ThemeMode.light, // Using light theme for now
+        home: const SplashScreen(),
+      );
   }
 
   /// Modern light theme with custom colors matching the app design

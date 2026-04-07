@@ -2,9 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
+import '../utils/logger.dart';
+import 'block_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final BlockService _blockService = BlockService();
 
   CollectionReference get _chatsCollection => _firestore.collection('chats');
   CollectionReference get _messagesCollection =>
@@ -20,9 +23,7 @@ class ChatService {
     required String otherUserImage,
   }) async {
     try {
-      debugPrint('💬 Getting or creating chat...');
-      debugPrint('   Current User: $currentUserId');
-      debugPrint('   Other User: $otherUserId');
+      Logger.debug('Getting or creating chat between $currentUserId and $otherUserId', 'ChatService');
 
       // Create a consistent chat ID (sorted user IDs)
       final sortedIds = [currentUserId, otherUserId]..sort();
@@ -33,7 +34,7 @@ class ChatService {
 
       if (!chatDoc.exists) {
         // Create new chat
-        debugPrint('   Creating new chat: $chatId');
+        Logger.debug('Creating new chat: $chatId', 'ChatService');
         final chat = ChatModel(
           id: chatId,
           participantIds: [currentUserId, otherUserId],
@@ -54,14 +55,14 @@ class ChatService {
         );
 
         await _chatsCollection.doc(chatId).set(chat.toMap());
-        debugPrint('✅ Chat created!');
+        Logger.info('Chat created successfully', 'ChatService');
       } else {
-        debugPrint('✅ Chat already exists!');
+        Logger.debug('Chat already exists', 'ChatService');
       }
 
       return chatId;
     } catch (e) {
-      debugPrint('❌ Error getting/creating chat: $e');
+      Logger.error('Error getting/creating chat', e, null, 'ChatService');
       rethrow;
     }
   }
@@ -78,6 +79,17 @@ class ChatService {
       debugPrint('📤 Sending message...');
       debugPrint('   Chat ID: $chatId');
       debugPrint('   Text: $text');
+
+      // Check if users are blocked
+      final areBlocked = await _blockService.areUsersBlocked(
+        userId1: senderId,
+        userId2: receiverId,
+      );
+
+      if (areBlocked) {
+        debugPrint('❌ Cannot send message: Users are blocked');
+        return false;
+      }
 
       final message = MessageModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),

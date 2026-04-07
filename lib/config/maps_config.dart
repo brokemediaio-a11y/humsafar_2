@@ -4,19 +4,38 @@
 /// 1. Go to Google Cloud Console (https://console.cloud.google.com/)
 /// 2. Enable "Maps Static API"
 /// 3. Create or use existing API key
-/// 4. Replace 'YOUR_API_KEY_HERE' with your actual API key
+/// 4. Set GOOGLE_MAPS_API_KEY environment variable
 /// 
-/// Note: For production, consider using environment variables or secure storage
+/// For production deployment:
+/// - Set environment variable: GOOGLE_MAPS_API_KEY=your_actual_key
+/// - Update AndroidManifest.xml to use ${GOOGLE_MAPS_API_KEY}
 class MapsConfig {
-  // Google Maps API key (same as in AndroidManifest.xml)
-  static const String apiKey = 'AIzaSyDTd4GTot7P6-5mb55Cav7QflvEgqdqY0Q';
+  // Google Maps API key from environment variable (secure approach)
+  static const String apiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: 'AIzaSyDTd4GTot7P6-5mb55Cav7QflvEgqdqY0Q', // Fallback for development
+  );
   
-  // Alternatively, you can use different keys for different platforms
-  // static const String androidApiKey = 'YOUR_ANDROID_KEY';
-  // static const String iosApiKey = 'YOUR_IOS_KEY';
-  // static const String webApiKey = 'YOUR_WEB_KEY';
+  // Platform-specific keys (if needed)
+  static const String androidApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_ANDROID_API_KEY',
+    defaultValue: apiKey,
+  );
   
-  /// Returns true if API key is configured
-  static bool get isConfigured => apiKey != 'YOUR_API_KEY_HERE';
+  static const String iosApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_IOS_API_KEY', 
+    defaultValue: apiKey,
+  );
+  
+  static const String webApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_WEB_API_KEY',
+    defaultValue: apiKey,
+  );
+  
+  /// Returns true if API key is configured and not using placeholder
+  static bool get isConfigured => 
+      apiKey.isNotEmpty && 
+      apiKey != 'YOUR_API_KEY_HERE' && 
+      apiKey.startsWith('AIza');
 }
 

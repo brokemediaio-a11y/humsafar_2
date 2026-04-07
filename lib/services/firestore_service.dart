@@ -84,5 +84,92 @@ class FirestoreService {
       return false;
     }
   }
+
+  /// Delete user account data from Firestore collections.
+  Future<bool> deleteUserAccountData(String uid) async {
+    try {
+      // Primary profile
+      await _usersCollection.doc(uid).delete();
+
+      // User-owned/related documents
+      await _deleteByField('posts', 'userId', uid);
+      await _deleteByField('booking_requests', 'passengerId', uid);
+      await _deleteByField('booking_requests', 'driverId', uid);
+      await _deleteByField('ride_offers', 'passengerId', uid);
+      await _deleteByField('ride_offers', 'driverId', uid);
+      await _deleteByField('alerts', 'userId', uid);
+      await _deleteByField('ratings', 'raterId', uid);
+      await _deleteByField('ratings', 'ratedUserId', uid);
+      await _deleteByField('reports', 'reporterId', uid);
+      await _deleteByField('reports', 'reportedUserId', uid);
+      await _deleteByField('blocks', 'blockerId', uid);
+      await _deleteByField('blocks', 'blockedUserId', uid);
+      await _deleteByField('messages', 'senderId', uid);
+      await _deleteByArrayContains('journeys', 'passengerIds', uid);
+      await _deleteByField('journeys', 'driverId', uid);
+
+      // Delete chats and their messages for this user.
+      final chatsSnapshot = await _firestore
+          .collection('chats')
+          .where('participantIds', arrayContains: uid)
+          .get();
+      for (final chatDoc in chatsSnapshot.docs) {
+        final chatId = chatDoc.id;
+        await _deleteByField('messages', 'chatId', chatId);
+        await chatDoc.reference.delete();
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting user account data: $e');
+      return false;
+    }
+  }
+
+  Future<void> _deleteByField(
+    String collection,
+    String field,
+    String value,
+  ) async {
+    final querySnapshot = await _firestore
+        .collection(collection)
+        .where(field, isEqualTo: value)
+        .get();
+    await _deleteQuerySnapshot(querySnapshot);
+  }
+
+  Future<void> _deleteByArrayContains(
+    String collection,
+    String field,
+    String value,
+  ) async {
+    final querySnapshot = await _firestore
+        .collection(collection)
+        .where(field, arrayContains: value)
+        .get();
+    await _deleteQuerySnapshot(querySnapshot);
+  }
+
+  Future<void> _deleteQuerySnapshot(
+    QuerySnapshot<Map<String, dynamic>> querySnapshot,
+  ) async {
+    if (querySnapshot.docs.isEmpty) return;
+
+    WriteBatch batch = _firestore.batch();
+    int count = 0;
+    for (final doc in querySnapshot.docs) {
+      batch.delete(doc.reference);
+      count++;
+      if (count == 400) {
+        await batch.commit();
+        batch = _firestore.batch();
+        count = 0;
+      }
+    }
+
+    if (count > 0) {
+      await batch.commit();
+    }
+  }
 }
 

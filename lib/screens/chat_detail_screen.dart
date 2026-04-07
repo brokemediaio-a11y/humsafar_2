@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../models/message_model.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
+import '../services/block_service.dart';
+import '../widgets/block_dialog.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String chatId;
@@ -25,14 +27,34 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
+  final BlockService _blockService = BlockService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
+  bool _isBlocked = false;
+  bool _isCheckingBlockStatus = true;
 
   @override
   void initState() {
     super.initState();
     _markMessagesAsRead();
+    _checkBlockStatus();
+  }
+
+  void _checkBlockStatus() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser != null) {
+      final blocked = await _blockService.areUsersBlocked(
+        userId1: currentUser.uid,
+        userId2: widget.otherUserId,
+      );
+      if (mounted) {
+        setState(() {
+          _isBlocked = blocked;
+          _isCheckingBlockStatus = false;
+        });
+      }
+    }
   }
 
   @override
@@ -69,6 +91,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     final currentUser = _authService.currentUser;
     if (currentUser == null) return;
+
+    // Check if users are blocked
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot send message. User is blocked.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSending = true);
 
@@ -107,6 +140,74 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       return DateFormat('h:mm a').format(time);
     }
     return DateFormat('MMM d, h:mm a').format(time);
+  }
+
+  Future<void> _handleBlockUser() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) return;
+
+    await showBlockDialog(
+      context: context,
+      currentUserId: currentUser.uid,
+      currentUserName: currentUser.displayName ?? 'User',
+      otherUserId: widget.otherUserId,
+      otherUserName: widget.otherUserName,
+      onUserBlocked: () {
+        setState(() => _isBlocked = true);
+      },
+    );
+  }
+
+  Future<void> _handleUnblockUser() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unblock User'),
+        content: Text('Are you sure you want to unblock ${widget.otherUserName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF49977a),
+            ),
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await _blockService.unblockUser(
+        blockerId: currentUser.uid,
+        blockedUserId: widget.otherUserId,
+      );
+
+      if (mounted) {
+        if (success) {
+          setState(() => _isBlocked = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${widget.otherUserName} has been unblocked'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to unblock user. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -164,6 +265,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ],
         ),
+        actions: [
+          if (!_isCheckingBlockStatus)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Color(0xFF1F2937)),
+              onSelected: (value) {
+                switch (value) {
+                  case 'block':
+                    _handleBlockUser();
+                    break;
+                  case 'unblock':
+                    _handleUnblockUser();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  value: _isBlocked ? 'unblock' : 'block',
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isBlocked ? Icons.check_circle : Icons.block,
+                        size: 20,
+                        color: _isBlocked ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(_isBlocked ? 'Unblock User' : 'Block User'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -278,57 +411,81 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               ],
             ),
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            hintStyle: TextStyle(color: Colors.grey.shade500),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+              child: _isBlocked
+                  ? Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.block,
+                            color: Colors.red.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You cannot send messages to this user',
+                              style: TextStyle(
+                                color: Colors.red.shade600,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          maxLines: null,
-                          textCapitalization: TextCapitalization.sentences,
-                          onSubmitted: (_) => _sendMessage(),
-                        ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF49977a),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: _isSending
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: TextField(
+                                controller: _messageController,
+                                decoration: InputDecoration(
+                                  hintText: 'Type a message...',
+                                  hintStyle: TextStyle(color: Colors.grey.shade500),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
                                 ),
-                              )
-                            : const Icon(Icons.send, color: Colors.white),
-                        onPressed: _isSending ? null : _sendMessage,
+                                maxLines: null,
+                                textCapitalization: TextCapitalization.sentences,
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF49977a),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: _isSending
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(Icons.send, color: Colors.white),
+                              onPressed: _isSending ? null : _sendMessage,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],
