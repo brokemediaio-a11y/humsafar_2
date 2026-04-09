@@ -226,10 +226,24 @@ class JourneyService {
   // Start a ride
   Future<bool> startRide(String journeyId) async {
     try {
+      final journeyDoc = await _firestore.collection('journeys').doc(journeyId).get();
+      if (!journeyDoc.exists) return false;
+
+      final postId = journeyDoc.data()?['postId'] as String?;
+
       await _firestore.collection('journeys').doc(journeyId).update({
         'status': 'active',
         'startTime': DateTime.now().toIso8601String(),
       });
+
+      if (postId != null && postId.isNotEmpty) {
+        try {
+          await _firestore.collection('posts').doc(postId).delete();
+        } catch (e) {
+          debugPrint('Error removing post after ride start: $e');
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error starting ride: $e');
